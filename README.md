@@ -1,4 +1,4 @@
-Go smtpd [![GoDoc](https://godoc.org/bitbucket.org/chrj/smtpd?status.png)](https://godoc.org/bitbucket.org/chrj/smtpd)
+Go smtpd [![GoDoc](https://godoc.org/github.com/strothj/smtpd?status.png)](https://godoc.org/github.com/strothj/smtpd)
 ========
 
 Package smtpd implements an SMTP server in golang.
@@ -13,7 +13,14 @@ Features
 * Configurable limits for: connection count, message size and recipient count
 * Hands incoming e-mail off to a configured callback function
 
+Original Repositories
+---------------------
+The original source repositories can be found here:
+[https://bitbucket.org/chrj/smtpd](https://bitbucket.org/chrj/smtpd)
+[https://bitbucket.org/kardianos/smtpd](https://bitbucket.org/kardianos/smtpd)
+
 Feedback
 --------
 
-If you end up using this package or have any feedback, I'd very much like to hear about it. You can reach me by [email](mailto:christian@technobabble.dk).
+I'm merging in changes from the above mentioned repositories, the original author
+can be reached at [email](mailto:christian@technobabble.dk).
