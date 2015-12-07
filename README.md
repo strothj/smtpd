@@ -23,4 +23,4 @@ Feedback
 --------
 
 I'm merging in changes from the above mentioned repositories, the original author
-can be reached at [email](mailto:christian@technobabble.dk).
+can be reached by [email](mailto:christian@technobabble.dk).
