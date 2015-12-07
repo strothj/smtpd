@@ -1,4 +1,4 @@
-package smtpd_test
+package smtpd
 
 import (
 	"bytes"
@@ -11,8 +11,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"bitbucket.org/chrj/smtpd"
 )
 
 var localhostCert = []byte(`-----BEGIN CERTIFICATE-----
@@ -50,7 +48,7 @@ func cmd(c *textproto.Conn, expectedCode int, format string, args ...interface{}
 	return err
 }
 
-func runserver(t *testing.T, server *smtpd.Server) (addr string, closer func()) {
+func runserver(t *testing.T, server *Server) (addr string, closer func()) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Listen failed: %v", err)
@@ -72,7 +70,7 @@ func runserver(t *testing.T, server *smtpd.Server) (addr string, closer func()) 
 	}
 }
 
-func runsslserver(t *testing.T, server *smtpd.Server) (addr string, closer func()) {
+func runsslserver(t *testing.T, server *Server) (addr string, closer func()) {
 	cert, err := tls.X509KeyPair(localhostCert, localhostKey)
 	if err != nil {
 		t.Fatalf("Cert load failed: %v", err)
@@ -86,7 +84,7 @@ func runsslserver(t *testing.T, server *smtpd.Server) (addr string, closer func(
 }
 
 func TestSMTP(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{})
+	addr, closer := runserver(t, &Server{})
 	defer closer()
 
 	c, err := smtp.Dial(addr)
@@ -155,12 +153,12 @@ func TestSMTP(t *testing.T) {
 }
 
 func TestListenAndServe(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{})
+	addr, closer := runserver(t, &Server{})
 	closer()
 	// Wait here for Windows to release the port.
 	time.Sleep(100 * time.Millisecond)
 
-	server := &smtpd.Server{}
+	server := &Server{}
 
 	dial := make(chan struct{})
 	go func() {
@@ -185,8 +183,8 @@ func TestListenAndServe(t *testing.T) {
 }
 
 func TestSTARTTLS(t *testing.T) {
-	addr, closer := runsslserver(t, &smtpd.Server{
-		Authenticator: func(peer smtpd.Peer, username, password string) error { return nil },
+	addr, closer := runsslserver(t, &Server{
+		Authenticator: func(peer Peer, username, password string) error { return nil },
 		ForceTLS:      true,
 	})
 
@@ -270,9 +268,9 @@ func TestSTARTTLS(t *testing.T) {
 }
 
 func TestAuthRejection(t *testing.T) {
-	addr, closer := runsslserver(t, &smtpd.Server{
-		Authenticator: func(peer smtpd.Peer, username, password string) error {
-			return smtpd.ErrAuthInvalid
+	addr, closer := runsslserver(t, &Server{
+		Authenticator: func(peer Peer, username, password string) error {
+			return ErrAuthInvalid
 		},
 		ForceTLS: true,
 	})
@@ -294,7 +292,7 @@ func TestAuthRejection(t *testing.T) {
 }
 
 func TestAuthNotSupported(t *testing.T) {
-	addr, closer := runsslserver(t, &smtpd.Server{
+	addr, closer := runsslserver(t, &Server{
 		ForceTLS: true,
 	})
 
@@ -315,9 +313,9 @@ func TestAuthNotSupported(t *testing.T) {
 }
 
 func TestConnectionCheck(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
-		ConnectionChecker: func(peer smtpd.Peer) error {
-			return smtpd.ErrMessageExceedStorage
+	addr, closer := runserver(t, &Server{
+		ConnectionChecker: func(peer Peer) error {
+			return ErrMessageExceedStorage
 		},
 	})
 	defer closer()
@@ -328,8 +326,8 @@ func TestConnectionCheck(t *testing.T) {
 }
 
 func TestConnectionCheckSimpleError(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
-		ConnectionChecker: func(peer smtpd.Peer) error {
+	addr, closer := runserver(t, &Server{
+		ConnectionChecker: func(peer Peer) error {
 			return errors.New("Denied")
 		},
 	})
@@ -341,12 +339,12 @@ func TestConnectionCheckSimpleError(t *testing.T) {
 }
 
 func TestHELOCheck(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
-		HeloChecker: func(peer smtpd.Peer, name string) error {
+	addr, closer := runserver(t, &Server{
+		HeloChecker: func(peer Peer, name string) error {
 			if name != "foobar.local" {
 				t.Fatal("Wrong HELO name")
 			}
-			return smtpd.ErrMessageExceedStorage
+			return ErrMessageExceedStorage
 		},
 	})
 	defer closer()
@@ -362,9 +360,9 @@ func TestHELOCheck(t *testing.T) {
 }
 
 func TestSenderCheck(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
-		SenderChecker: func(peer smtpd.Peer, addr string) error {
-			return smtpd.ErrMessageExceedStorage
+	addr, closer := runserver(t, &Server{
+		SenderChecker: func(peer Peer, addr string) error {
+			return ErrMessageExceedStorage
 		},
 	})
 	defer closer()
@@ -380,9 +378,9 @@ func TestSenderCheck(t *testing.T) {
 }
 
 func TestRecipientCheck(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
-		RecipientChecker: func(peer smtpd.Peer, addr string) error {
-			return smtpd.ErrMessageExceedStorage
+	addr, closer := runserver(t, &Server{
+		RecipientChecker: func(peer Peer, addr string) error {
+			return ErrMessageExceedStorage
 		},
 	})
 	defer closer()
@@ -402,7 +400,7 @@ func TestRecipientCheck(t *testing.T) {
 }
 
 func TestMaxMessageSize(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
+	addr, closer := runserver(t, &Server{
 		MaxMessageSize: 5,
 	})
 	defer closer()
@@ -441,8 +439,8 @@ func TestMaxMessageSize(t *testing.T) {
 }
 
 func TestHandler(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
-		Handler: func(peer smtpd.Peer, env smtpd.Envelope) error {
+	addr, closer := runserver(t, &Server{
+		Handler: func(peer Peer, env Envelope) error {
 			if env.Sender != "sender@example.org" {
 				t.Fatalf("Unknown sender: %v", env.Sender)
 			}
@@ -494,9 +492,9 @@ func TestHandler(t *testing.T) {
 }
 
 func TestRejectHandler(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
-		Handler: func(peer smtpd.Peer, env smtpd.Envelope) error {
-			return smtpd.ErrServerError
+	addr, closer := runserver(t, &Server{
+		Handler: func(peer Peer, env Envelope) error {
+			return ErrServerError
 		},
 	})
 	defer closer()
@@ -535,7 +533,7 @@ func TestRejectHandler(t *testing.T) {
 }
 
 func TestMaxConnections(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
+	addr, closer := runserver(t, &Server{
 		MaxConnections: 1,
 	})
 	defer closer()
@@ -553,7 +551,7 @@ func TestMaxConnections(t *testing.T) {
 }
 
 func TestNoMaxConnections(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
+	addr, closer := runserver(t, &Server{
 		MaxConnections: -1,
 	})
 	defer closer()
@@ -567,7 +565,7 @@ func TestNoMaxConnections(t *testing.T) {
 }
 
 func TestMaxRecipients(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
+	addr, closer := runserver(t, &Server{
 		MaxRecipients: 1,
 	})
 	defer closer()
@@ -595,7 +593,7 @@ func TestMaxRecipients(t *testing.T) {
 }
 
 func TestInvalidHelo(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{})
+	addr, closer := runserver(t, &Server{})
 	defer closer()
 
 	c, err := smtp.Dial(addr)
@@ -609,7 +607,7 @@ func TestInvalidHelo(t *testing.T) {
 }
 
 func TestInvalidSender(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{})
+	addr, closer := runserver(t, &Server{})
 	defer closer()
 
 	c, err := smtp.Dial(addr)
@@ -623,7 +621,7 @@ func TestInvalidSender(t *testing.T) {
 }
 
 func TestInvalidRecipient(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{})
+	addr, closer := runserver(t, &Server{})
 	defer closer()
 
 	c, err := smtp.Dial(addr)
@@ -641,7 +639,7 @@ func TestInvalidRecipient(t *testing.T) {
 }
 
 func TestRCPTbeforeMAIL(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{})
+	addr, closer := runserver(t, &Server{})
 	defer closer()
 
 	c, err := smtp.Dial(addr)
@@ -655,7 +653,7 @@ func TestRCPTbeforeMAIL(t *testing.T) {
 }
 
 func TestDATAbeforeRCPT(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{})
+	addr, closer := runserver(t, &Server{})
 	defer closer()
 
 	c, err := smtp.Dial(addr)
@@ -677,8 +675,8 @@ func TestDATAbeforeRCPT(t *testing.T) {
 }
 
 func TestInterruptedDATA(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
-		Handler: func(peer smtpd.Peer, env smtpd.Envelope) error {
+	addr, closer := runserver(t, &Server{
+		Handler: func(peer Peer, env Envelope) error {
 			t.Fatal("Accepted DATA despite disconnection")
 			return nil
 		},
@@ -711,7 +709,7 @@ func TestInterruptedDATA(t *testing.T) {
 }
 
 func TestTimeoutClose(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
+	addr, closer := runserver(t, &Server{
 		MaxConnections: 1,
 		ReadTimeout:    time.Second,
 		WriteTimeout:   time.Second,
@@ -745,7 +743,7 @@ func TestTimeoutClose(t *testing.T) {
 }
 
 func TestTLSTimeout(t *testing.T) {
-	addr, closer := runsslserver(t, &smtpd.Server{
+	addr, closer := runsslserver(t, &Server{
 		ReadTimeout:  time.Second * 2,
 		WriteTimeout: time.Second * 2,
 	})
@@ -786,7 +784,7 @@ func TestTLSTimeout(t *testing.T) {
 }
 
 func TestLongLine(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{})
+	addr, closer := runserver(t, &Server{})
 	defer closer()
 
 	c, err := smtp.Dial(addr)
@@ -804,9 +802,9 @@ func TestLongLine(t *testing.T) {
 }
 
 func TestXCLIENT(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{
+	addr, closer := runserver(t, &Server{
 		EnableXCLIENT: true,
-		SenderChecker: func(peer smtpd.Peer, addr string) error {
+		SenderChecker: func(peer Peer, addr string) error {
 			if peer.HeloName != "new.example.net" {
 				t.Fatalf("Didn't override HELO name: %v", peer.HeloName)
 			}
@@ -816,7 +814,7 @@ func TestXCLIENT(t *testing.T) {
 			if peer.Username != "newusername" {
 				t.Fatalf("Didn't override username: %v", peer.Username)
 			}
-			if peer.Protocol != smtpd.SMTP {
+			if peer.Protocol != SMTP {
 				t.Fatalf("Didn't override protocol: %v", peer.Protocol)
 			}
 			return nil
@@ -871,9 +869,9 @@ func TestXCLIENT(t *testing.T) {
 }
 
 func TestEnvelopeReceived(t *testing.T) {
-	addr, closer := runsslserver(t, &smtpd.Server{
+	addr, closer := runsslserver(t, &Server{
 		Hostname: "foobar.example.net",
-		Handler: func(peer smtpd.Peer, env smtpd.Envelope) error {
+		Handler: func(peer Peer, env Envelope) error {
 			env.AddReceivedLine(peer)
 			if !bytes.HasPrefix(env.Data, []byte("Received: from localhost [127.0.0.1] by foobar.example.net with ESMTP;")) {
 				t.Fatal("Wrong received line.")
@@ -922,7 +920,7 @@ func TestEnvelopeReceived(t *testing.T) {
 }
 
 func TestHELO(t *testing.T) {
-	addr, closer := runserver(t, &smtpd.Server{})
+	addr, closer := runserver(t, &Server{})
 	defer closer()
 
 	c, err := smtp.Dial(addr)
@@ -952,8 +950,8 @@ func TestHELO(t *testing.T) {
 }
 
 func TestLOGINAuth(t *testing.T) {
-	addr, closer := runsslserver(t, &smtpd.Server{
-		Authenticator: func(peer smtpd.Peer, username, password string) error { return nil },
+	addr, closer := runsslserver(t, &Server{
+		Authenticator: func(peer Peer, username, password string) error { return nil },
 	})
 	defer closer()
 
@@ -1009,8 +1007,8 @@ func TestErrors(t *testing.T) {
 		t.Fatalf("Cert load failed: %v", err)
 	}
 
-	server := &smtpd.Server{
-		Authenticator: func(peer smtpd.Peer, username, password string) error { return nil },
+	server := &Server{
+		Authenticator: func(peer Peer, username, password string) error { return nil },
 	}
 
 	addr, closer := runserver(t, server)

@@ -8,8 +8,8 @@ import (
 	"log"
 	"net/smtp"
 
-	"bitbucket.org/chrj/smtpd"
 	"github.com/eaigner/dkim"
+	"github.com/strothj/smtpd"
 )
 
 var (
