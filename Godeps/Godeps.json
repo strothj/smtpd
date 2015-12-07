@@ -1,0 +1,13 @@
+{
+	"ImportPath": "github.com/strothj/smtpd",
+	"GoVersion": "go1.5.1",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/eaigner/dkim",
+			"Rev": "6fe4a7ee9cfbd7eabb09b88c9fa4a9885dd3a628"
+		}
+	]
+}
